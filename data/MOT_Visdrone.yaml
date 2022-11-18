@@ -1,6 +1,6 @@
-train: /home/ltt/data/dataset/MOT_VisDrone/train.txt
-val: /home/ltt/data/dataset/MOT_VisDrone/valid.txt
-test: /home/ltt/data/dataset/MOT_VisDrone/test.txt
+train: /home/ltt/data/dataset/MOT_VisDrone/train
+val: /home/ltt/data/dataset/MOT_VisDrone/valid
+test: /home/ltt/data/dataset/MOT_VisDrone/test
 
 nc: 1
 names: ['people']

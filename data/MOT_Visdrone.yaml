@@ -1,0 +1,13 @@
+train: /home/ltt/data/dataset/MOT_VisDrone/train/images
+val: /home/ltt/data/dataset/MOT_VisDrone/valid/images
+test: /home/ltt/data/dataset/MOT_VisDrone/test/images
+
+nc: 1
+names: ['people']
+
+roboflow:
+  workspace: hechenghui97-hotmail-com
+  project: mot_visdrone_det_0.5
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/hechenghui97-hotmail-com/mot_visdrone_det_0.5/dataset/1

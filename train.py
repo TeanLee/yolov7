@@ -1,3 +1,13 @@
+# import comet_ml at the top of your file
+from comet_ml import Experiment
+
+# Create an experiment with your api key
+experiment = Experiment(
+    api_key="U3eK9Eorux61kTkylqvp0ynyK",
+    project_name="general",
+    workspace="ltt598625763",
+)
+
 import argparse
 import logging
 import math
@@ -36,17 +46,6 @@ from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_di
 from utils.wandb_logging.wandb_utils import WandbLogger, check_wandb_resume
 
 logger = logging.getLogger(__name__)
-
-# import comet_ml at the top of your file
-from comet_ml import Experiment
-
-# Create an experiment with your api key
-experiment = Experiment(
-    api_key="U3eK9Eorux61kTkylqvp0ynyK",
-    project_name="general",
-    workspace="ltt598625763",
-)
-
 
 def train(hyp, opt, device, tb_writer=None):
     logger.info(colorstr('hyperparameters: ') + ', '.join(f'{k}={v}' for k, v in hyp.items()))

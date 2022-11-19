@@ -258,6 +258,16 @@ def train(hyp, opt, device, tb_writer=None):
                                             image_weights=opt.image_weights, quad=opt.quad, prefix=colorstr('train: '))
     mlc = np.concatenate(dataset.labels, 0)[:, 0].max()  # max label class
     nb = len(dataloader)  # number of batches
+
+
+
+    # 尝试新增 comet 的日志
+    experiment.log_image(self, dataset.img_files, name=None, overwrite=False, image_format="png",
+    image_scale=1.0, image_shape=None, image_colormap=None,
+    image_minmax=None, image_channels="last", copy_to_tmp=True, step=None)
+    
+
+
     assert mlc < nc, 'Label class %g exceeds nc=%g in %s. Possible class labels are 0-%g' % (mlc, nc, opt.data, nc - 1)
 
     # Process 0

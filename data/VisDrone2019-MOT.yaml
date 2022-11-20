@@ -1,7 +1,7 @@
 
-train: /home/ltt/data/dataset/VisDrone2021-MOT/VisDrone2019-MOT-train/yolo-format/train
-val: /home/ltt/data/dataset/VisDrone2021-MOT/VisDrone2019-MOT-train/yolo-format/val
-test: /home/ltt/data/dataset/VisDrone2021-MOT/VisDrone2019-MOT-train/yolo-format/test
+train: /home/ltt/data/dataset/VisDrone2021-MOT/yolo-format/train
+val: /home/ltt/data/dataset/VisDrone2021-MOT/yolo-format/val
+test: /home/ltt/data/dataset/VisDrone2021-MOT/yolo-format/test
 
 nc: 10
 

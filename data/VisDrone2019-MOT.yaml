@@ -1,0 +1,15 @@
+
+train: /home/ltt/data/dataset/VisDrone2021-MOT/VisDrone2019-MOT-train/yolo-format
+val: /home/ltt/data/dataset/VisDrone2021-MOT/VisDrone2019-MOT-train/yolo-format
+test: /home/ltt/data/dataset/VisDrone2021-MOT/VisDrone2019-MOT-train/yolo-format
+
+nc: 10
+
+names: ['pedestrain', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor']
+
+# roboflow:
+#   workspace: hechenghui97-hotmail-com
+#   project: mot_visdrone_det_0.5
+#   version: 1
+#   license: CC BY 4.0
+#   url: https://universe.roboflow.com/hechenghui97-hotmail-com/mot_visdrone_det_0.5/dataset/1

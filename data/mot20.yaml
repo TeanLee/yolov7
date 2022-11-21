@@ -1,6 +1,6 @@
-train: /home/ltt/data/dataset/MOT20/train  # 118287 images
-val: /home/ltt/data/dataset/MOT20/test  # 5000 images
-test: /home/ltt/data/dataset/MOT20/test  # 20288 of 40670 images, submit to https://competitions.codalab.org/competitions/20794
+train: /home/ltt/data/dataset/MOT20/train.txt  # 118287 images
+val: /home/ltt/data/dataset/MOT20/val.txt  # 5000 images
+test: /home/ltt/data/dataset/MOT20/val.txt  # 20288 of 40670 images, submit to https://competitions.codalab.org/competitions/20794
 
 # number of classes
 nc: 1

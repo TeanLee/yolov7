@@ -4,7 +4,7 @@ from comet_ml import Experiment
 # Create an experiment with your api key
 experiment = Experiment(
     api_key="U3eK9Eorux61kTkylqvp0ynyK",
-    project_name="general",
+    project_name="ca-multi-head",
     workspace="ltt598625763",
 )
 

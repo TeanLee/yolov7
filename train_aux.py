@@ -1,3 +1,13 @@
+# import comet_ml at the top of your file
+from comet_ml import Experiment
+
+# Create an experiment with your api key
+experiment = Experiment(
+    api_key="U3eK9Eorux61kTkylqvp0ynyK",
+    project_name="general",
+    workspace="ltt598625763",
+)
+
 import argparse
 import logging
 import math

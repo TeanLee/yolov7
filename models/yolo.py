@@ -759,7 +759,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                  RepResX, RepResXCSPA, RepResXCSPB, RepResXCSPC, 
                  Ghost, GhostCSPA, GhostCSPB, GhostCSPC,
                  SwinTransformerBlock, STCSPA, STCSPB, STCSPC,
-                 SwinTransformer2Block, ST2CSPA, ST2CSPB, ST2CSPC]:
+                 SwinTransformer2Block, ST2CSPA, ST2CSPB, ST2CSPC, C3]:
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
@@ -774,7 +774,28 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                      RepResXCSPA, RepResXCSPB, RepResXCSPC,
                      GhostCSPA, GhostCSPB, GhostCSPC,
                      STCSPA, STCSPB, STCSPC,
-                     ST2CSPA, ST2CSPB, ST2CSPC]:
+                     ST2CSPA, ST2CSPB, ST2CSPC, C3]:
+                args.insert(2, n)  # number of repeats
+                n = 1
+        elif m in [CNeB, C3C2]:
+            c1, c2 = ch[f], args[0]
+            if c2 != no:  # if not output
+                c2 = make_divisible(c2 * gw, 8)
+
+            args = [c1, c2, *args[1:]]
+            if m in [CNeB, C3C2]:
+                args.insert(2, n)  # number of repeats
+                n = 1
+            elif m is nn.ConvTranspose2d:
+                if len(args) >= 7:
+                    args[6] = make_divisible(args[6] * gw, 8)
+        elif m in [ConvNextBlock]:
+            c1, c2 = ch[f], args[0]
+            if c2 != no:  # if not output
+                c2 = make_divisible(c2 * gw, 8)
+
+            args = [c1, c2, *args[1:]]
+            if m in [ConvNextBlock]:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is nn.BatchNorm2d:
@@ -797,6 +818,16 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             c2 = ch[f] * args[0] ** 2
         elif m is Expand:
             c2 = ch[f] // args[0] ** 2
+        elif m in [CA]:
+            c1, c2 = ch[f], args[0]
+            if c2 != no:  # if not outputss
+                c2 = make_divisible(c2 * gw, 8)
+            args = [c1, c2, *args[1:]]
+        elif m is CBAM:
+            c1, c2 = ch[f], args[0]
+            if c2 != no:
+                c2 = make_divisible(c2 * gw, 8)
+            args = [c1, c2]
         else:
             c2 = ch[f]
 

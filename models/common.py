@@ -2017,3 +2017,219 @@ class ST2CSPC(nn.Module):
         return self.cv4(torch.cat((y1, y2), dim=1))
 
 ##### end of swin transformer v2 #####   
+
+
+
+
+#### start CA ####
+
+class h_sigmoid(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_sigmoid, self).__init__()
+        self.relu = nn.ReLU6(inplace=inplace)
+
+    def forward(self, x):
+        return self.relu(x + 3) / 6
+
+class h_swish(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_swish, self).__init__()
+        self.sigmoid = h_sigmoid(inplace=inplace)
+
+    def forward(self, x):
+        return x * self.sigmoid(x)
+class CA(nn.Module):
+    # Coordinate Attention for Efficient Mobile Network Design
+    '''
+        Recent studies on mobile network design have demonstrated the remarkable effectiveness of channel attention (e.g., the Squeeze-and-Excitation attention) for lifting
+    model performance, but they generally neglect the positional information, which is important for generating spatially selective attention maps. In this paper, we propose a
+    novel attention mechanism for mobile iscyy networks by embedding positional information into channel attention, which
+    we call “coordinate attention”. Unlike channel attention
+    that transforms a feature tensor to a single feature vector iscyy via 2D global pooling, the coordinate attention factorizes channel attention into two 1D feature encoding 
+    processes that aggregate features along the two spatial directions, respectively
+    '''
+    def __init__(self, inp, oup, reduction=32):
+        super(CA, self).__init__()
+
+        mip = max(8, inp // reduction)
+
+        self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
+        self.bn1 = nn.BatchNorm2d(mip)
+        self.act = h_swish()
+        
+        self.conv_h = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
+        self.conv_w = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
+        
+
+    def forward(self, x):
+        identity = x
+        
+        n,c,h,w = x.size()
+        pool_h = nn.AdaptiveAvgPool2d((h, 1))
+        pool_w = nn.AdaptiveAvgPool2d((1, w))
+        x_h = pool_h(x)
+        x_w = pool_w(x).permute(0, 1, 3, 2)
+
+        y = torch.cat([x_h, x_w], dim=2)
+        y = self.conv1(y)
+        y = self.bn1(y)
+        y = self.act(y) 
+        
+        x_h, x_w = torch.split(y, [h, w], dim=2)
+        x_w = x_w.permute(0, 1, 3, 2)
+
+        a_h = self.conv_h(x_h).sigmoid()
+        a_w = self.conv_w(x_w).sigmoid()
+
+        out = identity * a_w * a_h
+
+        return out   
+
+#### end CA ####
+
+
+class C3(nn.Module):
+    # CSP Bottleneck with 3 convolutions
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c1, c_, 1, 1)
+        self.cv3 = Conv(2 * c_, c2, 1)  # act=FReLU(c2)
+        self.m = nn.Sequential(*(Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)))
+
+    def forward(self, x):
+        return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), dim=1))
+
+
+
+
+
+#### start CBAM ####
+
+class ChannelAttentionModule(nn.Module):
+    def __init__(self, c1, reduction=16):
+        super(ChannelAttentionModule, self).__init__()
+        mid_channel = c1 // reduction
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+
+        self.shared_MLP = nn.Sequential(
+            nn.Linear(in_features=c1, out_features=mid_channel),
+            nn.LeakyReLU(0.1, inplace=True),
+            nn.Linear(in_features=mid_channel, out_features=c1)
+        )
+        self.act = nn.Sigmoid()
+        #self.act=nn.SiLU()
+    def forward(self, x):
+        avgout = self.shared_MLP(self.avg_pool(x).view(x.size(0),-1)).unsqueeze(2).unsqueeze(3)
+        maxout = self.shared_MLP(self.max_pool(x).view(x.size(0),-1)).unsqueeze(2).unsqueeze(3)
+        return self.act(avgout + maxout)
+        
+class SpatialAttentionModule(nn.Module):
+    def __init__(self):
+        super(SpatialAttentionModule, self).__init__()
+        self.conv2d = nn.Conv2d(in_channels=2, out_channels=1, kernel_size=7, stride=1, padding=3)
+        self.act = nn.Sigmoid()
+    def forward(self, x):
+        avgout = torch.mean(x, dim=1, keepdim=True)
+        maxout, _ = torch.max(x, dim=1, keepdim=True)
+        out = torch.cat([avgout, maxout], dim=1)
+        out = self.act(self.conv2d(out))
+        return out
+
+class CBAM(nn.Module):
+    def __init__(self, c1,c2):
+        super(CBAM, self).__init__()
+        self.channel_attention = ChannelAttentionModule(c1)
+        self.spatial_attention = SpatialAttentionModule()
+
+    def forward(self, x):
+        out = self.channel_attention(x) * x
+        out = self.spatial_attention(out) * out
+        return out
+  
+
+#### end CBAM ####
+
+class CNeB(nn.Module):
+    # CSP ConvNextBlock with 3 convolutions by iscyy/yoloair
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c1, c_, 1, 1)
+        self.cv3 = Conv(2 * c_, c2, 1)
+        self.m = nn.Sequential(*(ConvNextBlock(c_) for _ in range(n)))
+    def forward(self, x):
+        return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), dim=1))
+
+
+#### from muitlbackbone.py ####
+class ConvNextBlock(nn.Module):
+    
+    def __init__(self, dim, drop_path=0., layer_scale_init_value=1e-6):
+        super().__init__()
+        self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim)  # depthwise conv
+        self.norm = LayerNorm_s(dim, eps=1e-6)
+        self.pwconv1 = nn.Linear(dim, 4 * dim)  
+        self.act = nn.GELU()
+        self.pwconv2 = nn.Linear(4 * dim, dim)
+        self.gamma = nn.Parameter(layer_scale_init_value * torch.ones((dim)),
+                                  requires_grad=True) if layer_scale_init_value > 0 else None
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+
+    def forward(self, x):
+        input = x
+        x = self.dwconv(x)
+        x = x.permute(0, 2, 3, 1)  # (N, C, H, W) -> (N, H, W, C)
+        x = self.norm(x)
+        x = self.pwconv1(x)
+        x = self.act(x)
+        x = self.pwconv2(x)
+        if self.gamma is not None:
+            x = self.gamma * x
+        x = x.permute(0, 3, 1, 2)  # (N, H, W, C) -> (N, C, H, W)
+
+        x = input + self.drop_path(x)
+        return x
+
+
+class LayerNorm_s(nn.Module):
+    
+    def __init__(self, normalized_shape, eps=1e-6, data_format="channels_last"):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(normalized_shape))
+        self.bias = nn.Parameter(torch.zeros(normalized_shape))
+        self.eps = eps
+        self.data_format = data_format
+        if self.data_format not in ["channels_last", "channels_first"]:
+            raise NotImplementedError
+        self.normalized_shape = (normalized_shape,)
+
+    def forward(self, x):
+        if self.data_format == "channels_last":
+            return F.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
+        elif self.data_format == "channels_first":
+            u = x.mean(1, keepdim=True)
+            s = (x - u).pow(2).mean(1, keepdim=True)
+            x = (x - u) / torch.sqrt(s + self.eps)
+            x = self.weight[:, None, None] * x + self.bias[:, None, None]
+            return x
+
+#### end from muitlbackbone.py ####
+
+class C3C2(nn.Module):
+    # CSP Bottleneck with 3 convolutions
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.conv = nn.Conv2d(c1, c_, 1, 1, autopad(1, None), groups=g, bias=False)
+        self.bn = nn.BatchNorm2d(c_)
+        self.act = nn.SiLU()
+        self.cv1 = Conv(2 * c_, c2, 1, act=nn.Mish())
+        self.m = nn.Sequential(*(Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)))
+
+    def forward(self, x):
+        y = self.conv(x)
+        return self.cv1(torch.cat((self.m(self.act(self.bn(y))), y), dim=1))
